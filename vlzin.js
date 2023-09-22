@@ -69,6 +69,9 @@ const budy =
 (type === 'conversation') ? info.message.conversation: 
 (type === 'extendedTextMessage') ? info.message.extendedTextMessage.text: ''
 
+let autosticker = JSON.parse(fs.readFileSync('./arquivos/autosticker.json'));
+const _autostick = JSON.parse(fs.readFileSync('./arquivos/autostickpc.json'));
+
 const from = info.key.remoteJid 
 const isGroup = from.endsWith("@g.us")
 const sender = isGroup ? info.key.participant: from
@@ -76,9 +79,46 @@ const comando = body.slice(1).trim().split(/ +/).shift().toLowerCase()
 const pushname = info.pushName ? info.pushName : nomeBot
 const args = body.trim().split(/ +/).splice(1)
 const q = args.join(' ')
+const isMedia = /image|video|sticker|audio/.test(mime)
+let xeonysticker = JSON.parse(fs.readFileSync('./arquivos/sticker.json'));
+const isAutoStick = _autostick.includes(from)
+const isAutoSticker = m.isGroup ? autosticker.includes(from) : false
 
 enviar = (blk) => { 
 sock.sendMessage(from,{text: blk},{quoted:info})}
+
+        //media detect \\
+		const isQuotedImage = type === 'extendedTextMessage' && content.includes('imageMessage')
+		const isQuotedVideo = type === 'extendedTextMessage' && content.includes('videoMessage')
+		const isQuotedAudio = type === 'extendedTextMessage' && content.includes('audioMessage')
+		const isQuotedSticker = type === 'extendedTextMessage' && content.includes('stickerMessage')
+		
+// Autosticker gc
+        if (isAutoSticker) {
+            if (/image/.test(mime) && !/webp/.test(mime)) {
+                let mediac = await quoted.download()
+                await sock.sendImageAsSticker(from, mediac, m, { packname: global.packname, author: global.author })
+                console.log(`Adesivo automático detectado`)
+            } else if (/video/.test(mime)) {
+                if ((quoted.msg || quoted).seconds > 11) return
+                let mediac = await quoted.download()
+                await sock.sendVideoAsSticker(from, mediac, m, { packname: global.packname, author: global.author })
+            }
+        }
+        //Autosticker pc
+                if (isAutoStick) {
+            if (/image/.test(mime) && !/webp/.test(mime)) {
+                let mediac = await quoted.download()
+                await sock.sendImageAsSticker(from, mediac, m, { packname: global.packname, author: global.author })
+                console.log(`Adesivo automático detectado`)
+            } else if (/video/.test(mime)) {
+                if ((quoted.msg || quoted).seconds > 11) return
+                let mediac = await quoted.download()
+                await sock.sendVideoAsSticker(from, mediac, m, { packname: global.packname, author: global.author })
+            }
+        }
+        
+        
 ///////  MENU \\\\\
 
 const { menu } = require("./menu/menu.js")
@@ -119,7 +159,62 @@ break
 
 //FIM DAS CASES DE BRINCADEIRAS
 
+case 'autosticker':
+            case 'autostiker':
+   //if (isBan) return enviar(mess.ban)	 			
+//if (isBanChat) return enviar(mess.banChat)
+if (!m.isGroup) return replay(mess.group)
+//if (!isBotAdmins) return enviar(mess.botAdmin)
+//if (!isAdmins && !isCreator) return enviar(mess.admin)
+if (args.length < 1) return enviar('digite auto adesivo para ativar\ndigite auto adesivo off para desabilitar')
+if (args[0]  === 'on'){
+if (isAutoSticker) return enviar(`Já ativado`)
+autosticker.push(from)
+fs.writeFileSync('./arquivos/autosticker.json', JSON.stringify(autosticker))
+enviar('autosticker ativado')
+} else if (args[0] === 'off'){
+let anu = autosticker.indexOf(from)
+autosticker.splice(anu, 1)
+fs.writeFileSync('./arquivos/autosticker.json', JSON.stringify(autosticker))
+enviar('autosticker desativado ')
+}
+break
+case 'autostickerpc':
+            case 'autostikerpc':
+   //if (isBan) return enviar(mess.ban)	 			
+//if (isBanChat) return enviar(mess.banChat)
+if (!m.isGroup) return replay(mess.group)
+if (args.length < 1) return enviar('digite autosticker para ativar\ndigite autosticker off para desabilitar')
+if (args[0]  === 'on'){
+if (isAutoStick) return enviar(`Já ativado`)
+_autostick.push(from)
+fs.writeFileSync('./arquivos/autostickpc.json', JSON.stringify(autosticker))
+enviar('autosticker pc ativado')
+} else if (args[0] === 'off'){
+let anu = autosticker.indexOf(from)
+_autostick.splice(anu, 1)
+fs.writeFileSync('./arquivos/autostickpc.json', JSON.stringify(autosticker))
+enviar('autosticker pc desativado')
+}
+break
 
+case 'sticker': case 's': case 'stickergif': case 'f': {
+   //if (isBan) return enviar(mess.ban)	 			
+//if (isBanChat) return enviar(mess.banChat)
+if (/image/.test(mime)) {
+let media = await quoted.download()
+let encmedia = await sock.sendImageAsSticker(m.chat, media, m, { packname: global.packname, author: global.author })
+await fs.unlinkSync(encmedia)
+} else if (/video/.test(mime)) {
+if ((quoted.msg || quoted).seconds > 11) return enviar('Maximum 10 seconds!')
+let media = await quoted.download()
+let encmedia = await sock.sendVideoAsSticker(m.chat, media, m, { packname: global.packname, author: global.author })
+await fs.unlinkSync(encmedia)
+} else {
+enviar(`Send Image/Video With Caption ${prefix + command}\nVideo Duration 1-9 Seconds`)
+}
+}
+break
 
 //COMANDOS DONO
 
